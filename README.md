@@ -5,3 +5,4 @@ To run:
 3. `cd osc_test`
 4. `pixi install`
 5. `pixi run jupyter lab`
+6. Open the example notebook and follow the instructions there.
