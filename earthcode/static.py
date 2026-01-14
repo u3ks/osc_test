@@ -2,6 +2,9 @@ import pystac
 from datetime import datetime
 
 
+pystac.set_stac_version('1.0.0')
+
+
 def add_themes(collection, themes_to_add):
     '''Add themes to the collection custom fields and add links to the themes collection.'''
     
@@ -64,7 +67,7 @@ def add_product_missions(collection, missions_to_add):
             pystac.Link(rel="related", 
                         target=f'../../eo-missions/{mission}/catalog.json', 
                         media_type="application/json",
-                        title=f"EO Mission: {mission.capitalize()}"
+                        title=f"Mission: {mission.capitalize()}"
             )
         )
 
