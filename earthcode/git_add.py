@@ -77,7 +77,13 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
     save_catalog_with_remote_selfhref(products_catalog, local_catalog_path, catalog_extension)
 
     # add product to project Collection
-    project_collection =  pystac.Collection.from_file(catalog_root / f'projects/{project_id}/collection.json')
+    import json
+    with open(catalog_root / f'projects/{project_id}/collection.json') as f:
+        project_collection = json.load(f)
+        project_collection = pystac.Collection.from_dict(project_collection,
+                                                         migrate=False,
+                                                         root=None,
+                                                         preserve_dict=True)
     project_collection.add_link(
         pystac.Link(
             rel='child',
@@ -86,7 +92,10 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
             title=f'{product_collection.title}'
         )
     )
-    project_collection.save_object(include_self_link=False, dest_href=catalog_root / f'projects/{project_id}/collection.json')
+    with open(catalog_root / f'projects/{project_id}/collection.json', 'w') as f:
+        json.dump(
+            project_collection.to_dict(include_self_link=False, transform_hrefs=False), 
+            f, ensure_ascii=False, indent=2)
 
 
     # add theme return links

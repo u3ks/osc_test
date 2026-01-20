@@ -305,3 +305,97 @@ def create_workflow_collection(workflow_id, workflow_title,
     )
     
     return collection
+
+
+
+
+def generate_OSC_dummy_entries(id_extension='+123'):
+
+    # project
+    project_id = "4datlantic-ohc" + id_extension
+    project_title = "4DAtlantic-OHC" 
+    project_description = "Given the major role of the ocean in the climate system, it is essential to characterize the temporal and spatial variations of its heat content. The OHC product results from the space geodetic approach also called altimetry-gravimetry approach."
+    project_status = "completed" 
+    project_license = "various" 
+    project_s, project_w, project_n, project_e = -180.0, -90.0, 180.0, 90.0 
+    project_start_year, project_start_month, project_start_day = 2021, 7, 6
+    project_end_year, project_end_month, project_end_day = 2025,6,12
+    website_link = "https://www.4datlantic-ohc.org/"
+    eo4socity_link = "https://eo4society.esa.int/projects/4datlantic-ohc/"
+    project_themes = ["oceans"]
+    to_name, to_email = 'Roberto Sabia', 'roberto.sabia@esa.int'
+    consortium_members = [('Magellium', "magellium.fr")]
+    spatial_extent = pystac.SpatialExtent([[project_s, project_w, project_n, project_e]])
+    temporal_extent = pystac.TemporalExtent(
+        [[datetime(project_start_year, project_start_month, project_start_day), 
+        datetime(project_end_year, project_end_month, project_end_day)]])
+    extent = pystac.Extent(spatial=spatial_extent, temporal=temporal_extent)
+    project_collection = create_project_collection(project_id, 
+                                project_title,
+                                project_description, 
+                                project_status,
+                                project_license,
+                                extent,
+                                project_themes,
+                                to_name,
+                                to_email,
+                                consortium_members,
+                                website_link,
+                                eo4socity_link=None)
+    # product
+    product_id = "4d-atlantic-ohc-global" + id_extension
+    product_title = "Global Ocean Heat Content"
+    product_description = "Given the major role of the ocean in the climate system, it is essential to characterize the temporal and spatial variations of its heat content. The OHC product results from the space geodetic approach also called altimetry-gravimetry approach. This dataset contains variables as 3D grids of ocean heat content anomalies at 1x1 resolution and monthly time step. Error variance-covariance matrices of OHC at regional scale and annual resolution are also provided. See Experimental Dataset Description for details: https://www.aviso.altimetry.fr/fileadmin/documents/data/tools/OHC-EEI/OHCATL-DT-035-MAG_EDD_V3.0.pdf. Version V3-0 of Dataset published 2025 in ODATIS-AVISO portal. This dataset has been produced within the framework of the 4DAtlantic-Ocean heat content Project funded by ESA."
+    product_status = "completed"
+    product_license = "various"
+    product_keywords = [ 
+        "ocean",
+        "heat",
+        'content'
+    ] 
+    product_s =  [-180.0]
+    product_w = [-90.0]
+    product_n = [180.0]
+    product_e = [90.0]
+    product_start_year, product_start_month, product_start_day = 2021, 1, 1
+    product_end_year, product_end_month, product_end_day = 2021,12,31
+    product_region = "Global"
+    product_themes = ["oceans"]
+    product_missions = ['in-situ-observations', 'grace']
+    product_variables = ['ocean-heat-budget']
+    product_parameters = ['ocean-heat-budget']
+    spatial_extent = pystac.SpatialExtent([list(data) for data in zip(product_s, product_w, product_n, product_e)])
+    temporal_extent = pystac.TemporalExtent(
+        [[datetime(product_start_year, product_start_month, product_start_day), 
+        datetime(product_end_year, product_end_month, product_end_day)]])
+    product_extent = pystac.Extent(spatial=spatial_extent, temporal=temporal_extent)
+    project_id = project_id
+    project_title = project_title
+    product_collection = create_product_collection(product_id, product_title, product_description, 
+                              product_extent, product_license,
+                              product_keywords, product_status, product_region,
+                              product_themes, product_missions, product_variables,
+                              project_id, project_title, product_parameters=product_parameters)
+    item_link = 'https://s3.waw4-1.cloudferro.com/EarthCODE/Catalogs/4datlantic-ohc/collection.json'
+    access_link = f'https://opensciencedata.esa.int/stac-browser/#/external/{item_link}'
+    documentation_link = 'https://www.aviso.altimetry.fr/fileadmin/documents/data/tools/OHC-EEI/OHCATL-DT-035-MAG_EDD_V3.0.pdf'
+    manually_add_product_links(product_collection, access_link, documentation_link, item_link,)
+
+    # workflow
+    workflow_id = "4datlantic-wf" + id_extension
+    workflow_title="4D-Atlantic-Workflow"
+    workflow_description="This describes the OHC workflow"
+    workflow_keywords= ["ocean", "heat", 'çontent']
+    workflow_license = 'CC-BYB4.0' 
+    workflow_formats = ['netcdf64']
+    project_id = "4datlantic-ohc"
+    project_title = "4D Atlantic OHC"
+    workflow_themes = ['oceans']
+    workflow_contracts_info = [('Magellium', "contact@magellium.fr")]
+    codeurl = 'https://github.com/ESA-EarthCODE/open-science-catalog-metadata'
+    workflow_collection = create_workflow_collection(workflow_id, workflow_title, 
+                               workflow_description, workflow_license,
+                               workflow_keywords, workflow_formats, workflow_themes,
+                               codeurl, project_id, project_title)
+    
+    return project_collection, product_collection, workflow_collection
