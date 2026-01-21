@@ -596,6 +596,7 @@ def validate_catalog(root_path):
     if not root.exists():
         print(f"Error: Path {root} does not exist.")
 
+    ids = []
     errors = []
     error_files = []
 
@@ -607,9 +608,18 @@ def validate_catalog(root_path):
                 full_path = Path(current_dir) / file
                 with open(full_path) as f:
                     stac_object = json.load(f)
+                
+                ids.append(stac_object['id'])
+
                 file_errors = validateOSCEntry(stac_object, root)
                 if file_errors:
                     errors.append(file_errors)
                     error_files.append(full_path)
-    
+
+    # check for duplicated ids
+    counts = {i: ids.count(i) for i in ids}
+    duplicate_ids = {i for i in counts.keys() if counts[i] > 1}
+    if len(duplicate_ids):
+        errors.append('Duplicated ids: ' ', '.join(duplicate_ids))
+
     return errors, error_files
