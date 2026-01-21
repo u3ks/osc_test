@@ -44,7 +44,6 @@ def _infer_file_path(data: Dict, root: Path) -> Path:
         return root / obj_id / "catalog.json"
 
     osc_type = data.get("osc:type")
-    
     if osc_type == "project":
         return root / "projects" / obj_id / "collection.json"
     if osc_type == "product":
@@ -54,12 +53,22 @@ def _infer_file_path(data: Dict, root: Path) -> Path:
         root / "eo-missions" / obj_id / "catalog.json",
         root / "themes" / obj_id / "catalog.json",
         root / "variables" / obj_id / "catalog.json",
+    ]
+    for c in candidates:
+        # if the file existings and is of the same type, this is its path
+        if c.exists() and str(c.relative_to(root)).startswith(osc_type):
+            return c
+    
+    # try infering type from workflow/experiment object
+    if (osc_type is None) and ('properties' in data):
+        osc_type = data['properties'].get('type')
+    exp_wf_candidates = [
         root / "workflows" / obj_id / "record.json",
         root / "experiments" / obj_id / "record.json"
     ]
-    
-    for c in candidates:
-        if c.exists():
+    for c in exp_wf_candidates:
+        # if the file existings and is of the same type, this is its path
+        if c.exists() and str(c.relative_to(root)).startswith(osc_type):
             return c
     
     # check if the file is a product STAC item
@@ -425,43 +434,43 @@ def _validate_variable(ctx):
     _check_themes(ctx)
 
 def _validate_workflow(ctx):
-    pass
-    # data = ctx["data"]
-    # if data.get("type") != "Feature":
-    #     ctx["errors"].append("type must be 'Feature'")
-        
-    # _ensure_id_is_folder_name(ctx)
-    # _require_parent_link(ctx, "../catalog.json")
-    # _require_root_link(ctx, "../../catalog.json")
-    # _check_child_links(ctx, "experiments", "record")
-    # _check_stac_links_rel_abs(ctx, False)
+    
+    data = ctx["data"]
+    if data.get("type") != "Feature":
+        ctx["errors"].append("type must be 'Feature'")
+         
+    _ensure_id_is_folder_name(ctx)
+    _require_parent_link(ctx, "../catalog.json")
+    _require_root_link(ctx, "../../catalog.json")
+    _check_child_links(ctx, "experiments", "record")
+    _check_stac_links_rel_abs(ctx, False)
 
-    # props = data.get("properties", {})
-    # if not isinstance(props.get("osc:project"), str):
-    #     ctx["errors"].append("'osc:project' must be a string")
+    props = data.get("properties", {})
+    if not isinstance(props.get("osc:project"), str):
+        ctx["errors"].append("'osc:project' must be a string")
         
-    # _check_osc_cross_ref(ctx, props.get("osc:project"), "projects", True)
+    _check_osc_cross_ref(ctx, props.get("osc:project"), "projects", True)
 
 def _validate_experiment(ctx):
-    pass
-    # data = ctx["data"]
-    # if data.get("type") != "Feature":
-    #     ctx["errors"].append("type must be 'Feature'")
     
-    # _ensure_id_is_folder_name(ctx)
-    # _require_parent_link(ctx, "../catalog.json")
-    # _require_root_link(ctx, "../../catalog.json")
-    # _check_child_links(ctx)
-    # _check_stac_links_rel_abs(ctx, False)
+    data = ctx["data"]
+    if data.get("type") != "Feature":
+        ctx["errors"].append("type must be 'Feature'")
+    
+    _ensure_id_is_folder_name(ctx)
+    _require_parent_link(ctx, "../catalog.json")
+    _require_root_link(ctx, "../../catalog.json")
+    _check_child_links(ctx)
+    _check_stac_links_rel_abs(ctx, False)
 
-    # props = data.get("properties", {})
-    # if not isinstance(props.get("osc:workflow"), str):
-    #     ctx["errors"].append("'osc:workflow' must be a string")
+    props = data.get("properties", {})
+    if not isinstance(props.get("osc:workflow"), str):
+        ctx["errors"].append("'osc:workflow' must be a string")
         
-    # _check_osc_cross_ref(ctx, props.get("osc:workflow"), "workflows", True)
+    _check_osc_cross_ref(ctx, props.get("osc:workflow"), "workflows", True)
     
-    # _has_link_with_rel(ctx, "environment")
-    # _has_link_with_rel(ctx, "input")
+    _has_link_with_rel(ctx, "environment")
+    _has_link_with_rel(ctx, "input")
 
 
 def _validate_relative_schema(ctx, schema_file):
@@ -533,7 +542,7 @@ def validateOSCEntry(data: dict, catalog_root: Path) -> List[str]:
         if not (isinstance(title, str) and len(title) > 0):
             errors.append("must have a title")
 
-    # _no_duplicated_links(ctx)
+    _no_duplicated_links(ctx)
     
     # call specific validation function
     if is_sub_catalog_root:
