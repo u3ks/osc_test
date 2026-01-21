@@ -55,8 +55,8 @@ def _infer_file_path(data: Dict, root: Path) -> Path:
         root / "variables" / obj_id / "catalog.json",
     ]
     for c in candidates:
-        # if the file existings and is of the same type, this is its path
-        if c.exists() and str(c.relative_to(root)).startswith(osc_type):
+        # "eo-missions", themes and variable shave no osc:type field
+        if c.exists():
             return c
     
     # try infering type from workflow/experiment object
