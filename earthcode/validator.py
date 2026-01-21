@@ -467,10 +467,10 @@ def _validate_experiment(ctx):
 def _validate_relative_schema(ctx, schema_file):
 
     schema_file = Path(__file__).resolve().parent / schema_file
-    with open(schema_file) as f:
+    with open(schema_file, 'r', encoding='utf-8') as f:
         schema = json.load(f)
     
-    with open(ctx['file_path']) as f:
+    with open(ctx['file_path'], 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     # Create a base URI for the folder containing the schema
@@ -594,9 +594,8 @@ def validate_catalog(root_path):
     for current_dir, _, files in os.walk(root):
         for file in files:
             if file.endswith(".json"):
-        
                 full_path = Path(current_dir) / file
-                with open(full_path) as f:
+                with open(full_path, 'r', encoding='utf-8') as f:
                     stac_object = json.load(f)
                 file_errors = validateOSCEntry(stac_object, root)
                 if file_errors:
