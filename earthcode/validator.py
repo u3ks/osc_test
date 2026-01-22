@@ -254,6 +254,37 @@ def _require_child_links_for_other_json(ctx, files_to_check=None, filename="coll
         if not lh.exists():
              _assert(ctx, False, f"must have file for link {lh}")
 
+
+def _check_back_links(ctx, property):
+
+    if property == 'osc:variables':
+        extension = 'variables'
+        vars = ctx['data'][property]
+    elif property == 'osc:missions':
+        extension = 'eo-missions'
+        vars = ctx['data'][property]
+    elif property == 'themes':
+        extension = 'themes'
+        vars = [t['id'] for themes in ctx['data']['themes'] for t in themes['concepts']]
+    else:
+        raise ValueError('Unknown property ', property)
+
+    for var in vars:
+        catalog_path = ctx['root'] / extension / var / 'catalog.json'
+        with open(catalog_path, 'r', encoding='utf-8') as f:
+            catalog = json.load(f)
+        back_link_exists = any(ctx['data']['id'] in l['href'] in l['href'] for l in catalog['links'])
+        if not back_link_exists:
+            ctx['errors'].append(f'Missing return link from {catalog_path} to product {ctx['data']['id']}')
+
+def _only_product_backlinks(ctx):
+    back_link_exists = any(
+        (('/products/' not in l['href']) and (l['rel'] == 'child'))
+        for l in ctx['data']['links']
+    )
+    if back_link_exists:
+        ctx['errors'].append(f'{ctx['file_path']} has child links to non-products')
+
 def _check_themes(ctx):
     themes = ctx["data"].get("themes")
     _assert(ctx, isinstance(themes, list), "'themes' must be an array")
@@ -346,7 +377,6 @@ def _validate_project(ctx):
     _require_technical_officer(ctx)
 
 
-
 def _validate_product(ctx):
     data = ctx["data"]
     _assert(ctx, data.get("type") == "Collection", "type must be 'Collection'")
@@ -365,6 +395,10 @@ def _validate_product(ctx):
     _check_osc_cross_ref_array(ctx, "osc:variables", "variables")
     _check_osc_cross_ref_array(ctx, "osc:missions", "eo-missions")
     _check_osc_cross_ref(ctx, data.get("osc:experiment"), "experiments")
+
+    _check_back_links(ctx, "osc:variables")
+    _check_back_links(ctx, "osc:missions")
+    _check_back_links(ctx, "themes")
 
     _check_themes(ctx)
 
@@ -409,6 +443,8 @@ def _validate_eo_mission(ctx):
     _check_child_links(ctx)
     _check_stac_links_rel_abs(ctx)
 
+    _only_product_backlinks(ctx)
+
 def _validate_theme(ctx):
     if ctx["data"].get("type") != "Catalog":
         ctx["errors"].append("type must be 'Catalog'")
@@ -419,6 +455,8 @@ def _validate_theme(ctx):
     _check_child_links(ctx)
     _check_stac_links_rel_abs(ctx)
     _check_preview_image(ctx)
+    
+    _only_product_backlinks(ctx)
 
 def _validate_variable(ctx):
     if ctx["data"].get("type") != "Catalog":
@@ -432,6 +470,8 @@ def _validate_variable(ctx):
     _check_child_links(ctx)
     _check_stac_links_rel_abs(ctx)
     _check_themes(ctx)
+
+    _only_product_backlinks(ctx)
 
 def _validate_workflow(ctx):
     
@@ -513,7 +553,6 @@ def validateOSCEntry(data: dict, catalog_root: Path) -> List[str]:
 
     # Generate validation context
     rel_path = "/" + file_path.relative_to(catalog_root).as_posix()
-    
     is_root_catalog = rel_path.endswith("/catalog.json") and data.get("id") == "osc"
     is_eo_mission = "/eo-missions/" in rel_path and rel_path.endswith("/catalog.json")
     is_product = "/products/" in rel_path and rel_path.endswith("/collection.json")
