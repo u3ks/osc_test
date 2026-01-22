@@ -7,7 +7,8 @@ To run:
 5. `pixi run jupyter lab`
 
 
-To start using the library, see the appropriate notebook or example.
+We have examples for:
 - ./examples/create_OSC_entries.ipynb - shows how to create OSC entries
-- ./examples/add_through_pull_request.ipynb - shows how to add newly created entries to the OSC, using a GitHub pull request
+- ./examples/contribute_via_pr_osc.ipynb - shows how to add newly created entries to the OSC, using a GitHub pull request
+- ./examples/contribute_via_pr_osc.ipynb - shows how to add entries to the OSC, using a combination of this library and the OSC Editor( a GUI tool)
 - ./examples/example_notebook.ipynb - is a simplified introduction to the OSC and all the necassary steps to publish data.
