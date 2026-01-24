@@ -186,7 +186,7 @@ def _load_zip_zarr(url: str, **kwargs):
 def get_resolve_href(feat, asset):
 
     # check for cloudferro assets
-    if ('EarthCODE/OSCAssets' in asset['href']) and  (asset['href'][0] != '/'):
+    if asset['href'].startswith('s3://'):
             return 'https://s3.waw4-1.cloudferro.com/' + asset['href']  
     elif asset['href'][0] != '/':
             return asset['href']
