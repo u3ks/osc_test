@@ -19,6 +19,7 @@ netcdf4 = ">=1.7.3,<2"
 bottleneck = ">=1.6.0,<2"
 rioxarray = ">=0.20.0,<0.21"
 pytest = ">=9.0.2,<10"
+geopandas = ">=1.1.2,<2"
 
 [pypi-dependencies]
 earthcode = { path = ".", editable = true }

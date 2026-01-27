@@ -14,7 +14,7 @@ def save_catalog_with_remote_selfhref(catalog_object, local_catalog_path, catalo
             link['href'] = remote_catalog_path
     
     import json
-    with open(local_catalog_path, 'w') as f:
+    with open(local_catalog_path, 'w', encoding='utf-8') as f:
         json.dump(catalog_dict, f, indent=2, ensure_ascii=False)
 
 
