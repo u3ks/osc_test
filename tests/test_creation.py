@@ -34,7 +34,7 @@ def test_project_ohc():
 
     # Define the links to the project website and  EO4SocietyLink
     website_link = "https://www.4datlantic-ohc.org/"
-    eo4socity_link = "https://eo4society.esa.int/projects/4datlantic-ohc/"
+    eo4society_link = "https://eo4society.esa.int/projects/4datlantic-ohc/"
 
     # Define project themes. Pick one or more from:
     # - atmosphere, cryosphere, land, magnetosphere-ionosphere, oceans, solid-earth.
@@ -65,7 +65,7 @@ def test_project_ohc():
                                 to_email,
                                 consortium_members,
                                 website_link,
-                                eo4socity_link=eo4socity_link)
+                                eo4society_link=eo4society_link)
     project_collection.validate()
 
 

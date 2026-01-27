@@ -108,7 +108,7 @@ def create_project_collection(project_id,
                               to_email,
                               consortium_members,
                               website_link,
-                              eo4socity_link=None):
+                              eo4society_link=None):
 
     '''Create project collection template from the provided information.'''
 
@@ -139,10 +139,10 @@ def create_project_collection(project_id,
     ])
 
     # add the website links
-    if eo4socity_link is None:
+    if eo4society_link is None:
         add_links(collection, ['via', ], [website_link], ["Website"])
     else:
-        add_links(collection, ['via', 'via'], [website_link, eo4socity_link], ["Website", "EO4Society Link"])
+        add_links(collection, ['via', 'via'], [website_link, eo4society_link], ["Website", "EO4Society Link"])
 
     
     # add the themes
@@ -321,7 +321,7 @@ def generate_OSC_dummy_entries(id_extension='+123'):
     project_start_year, project_start_month, project_start_day = 2021, 7, 6
     project_end_year, project_end_month, project_end_day = 2025,6,12
     website_link = "https://www.4datlantic-ohc.org/"
-    eo4socity_link = "https://eo4society.esa.int/projects/4datlantic-ohc/"
+    eo4society_link = "https://eo4society.esa.int/projects/4datlantic-ohc/"
     project_themes = ["oceans"]
     to_name, to_email = 'Roberto Sabia', 'roberto.sabia@esa.int'
     consortium_members = [('Magellium', "magellium.fr")]
@@ -341,7 +341,7 @@ def generate_OSC_dummy_entries(id_extension='+123'):
                                 to_email,
                                 consortium_members,
                                 website_link,
-                                eo4socity_link=None)
+                                eo4society_link=None)
     # product
     product_id = "4d-atlantic-ohc-global" + id_extension
     product_title = "Global Ocean Heat Content"
