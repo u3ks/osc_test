@@ -14,6 +14,159 @@ import pandas as pd
 
 
 
+import pystac
+from pystac.extensions.scientific import ScientificExtension, FileExtension
+from datetime import datetime
+
+def create_compliant_collection(
+    product_collection: pystac.Collection, 
+    project_collection: pystac.Collection,
+    contract_number: str
+) -> pystac.Collection:
+    """
+    Merges a Product and Project STAC collection into a new Collection 
+    adhering to the specific OSC/EarthCODE requirements.
+    """
+    
+    # 1. Basic STAC attributes
+    new_id = product_collection.id
+    new_title = product_collection.title
+    new_description = product_collection.description
+    new_license = product_collection.license
+    
+    # Extents are taken from the product
+    new_extent = product_collection.extent
+    
+    # Keywords
+    new_keywords = product_collection.keywords or []
+
+    # 2. Create the new Collection Object
+    new_coll = pystac.Collection(
+        id=new_id,
+        title=new_title,
+        description=new_description,
+        extent=new_extent,
+        license=new_license,
+        keywords=new_keywords,
+        stac_extensions=[] # We will populate this explicitly below
+    )
+    
+    # 3. Mandatory STAC Extensions
+    required_extensions = [
+        "https://stac-extensions.github.io/osc/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/processing/v1.2.0/schema.json",
+        "https://stac-extensions.github.io/themes/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/cf/v1.0.0/schema.json"
+    ]
+    new_coll.stac_extensions = required_extensions
+
+    # 4. Map 'Extra Fields'  or custom Metadata)
+    proc_dt = product_collection.extra_fields.get("created")
+    if proc_dt:
+        new_coll.extra_fields["processing:datetime"] = proc_dt
+    # Region
+    if "osc:region" in product_collection.extra_fields:
+        new_coll.extra_fields["osc:region"] = product_collection.extra_fields["osc:region"]
+    
+    # --- OSC Extension Fields ---
+    new_coll.extra_fields["osc:project"] = project_collection.id
+    new_coll.extra_fields["osc:project_description"] = project_collection.description
+    # (Required: 'apex' or 'earthcode') - Defaulting to EarthCODE
+    new_coll.extra_fields["osc:initiative"] = "earthcode"
+    # Variables & Missions
+    if "osc:variables" in product_collection.extra_fields:
+        new_coll.extra_fields["osc:variables"] = product_collection.extra_fields["osc:variables"]
+        
+    if "osc:missions" in product_collection.extra_fields:
+        new_coll.extra_fields["osc:missions"] = product_collection.extra_fields["osc:missions"]
+    themes = product_collection.extra_fields.get("themes") or project_collection.extra_fields.get("themes")
+    if themes:
+        new_coll.extra_fields["themes"] = themes
+
+    # Project Website (Required)
+    # Attempt to find a link in project or default to a placeholder
+    # In the input JSON, links are empty, so we look for a placeholder or extract from description
+    website = "https://placeholder-project-website.com" 
+    # (Optional logic: extract URL from description text if needed)
+    new_coll.extra_fields["osc:project_website"] = website
+
+    # Contract Number (Required)
+    new_coll.extra_fields["osc:contract-number"] = contract_number
+        
+    # --- Scientific Extension ---
+    # DOI
+    if "sci:doi" in product_collection.extra_fields:
+        new_coll.extra_fields["sci:doi"] = product_collection.extra_fields["sci:doi"]        
+        new_coll.extra_fields["sci:citation"] = f"{new_title}. {new_coll.extra_fields.get('sci:doi', '')}"
+
+    # --- CF Extension ---
+    if "cf:parameter" in product_collection.extra_fields:
+        new_coll.extra_fields["cf:parameter"] = product_collection.extra_fields["cf:parameter"]
+
+    return new_coll
+
+
+def add_assets(prr_collection):
+    pass
+
+
+
+def transform_item_to_spec(item: pystac.Item) -> pystac.Item:
+    """
+    Transforms a STAC Item to meet the new Project specification.
+    
+    Key changes:
+    1. Ensures 'datetime' is populated (falls back to start_datetime).
+    2. Adds the 'File' STAC extension.
+    3. Enforces 'file:size' on all assets (sets a placeholder if unknown).
+    """
+    
+    # 1. Create a clone to avoid mutating the original object
+    new_item = item.clone()
+    
+    # 2. Update STAC Version (Recommended 1.0.0)
+    # Note: Pystac handles versioning internally, but we set the explicit structure if exporting to dict
+    # We leave it as is or allow Pystac to default to supported version.
+    
+    # 3. Handle Datetime (Spec: If null, set to start_datetime)
+    if new_item.datetime is None:
+        # Pystac stores start/end in common_metadata or extra_fields
+        start_dt = new_item.common_metadata.start_datetime
+        if start_dt:
+            new_item.datetime = start_dt
+    
+    # 4. Mandatory Extensions
+    # The spec requires the File extension.
+    file_schema_uri = "https://stac-extensions.github.io/file/v2.1.0/schema.json"
+    if file_schema_uri not in new_item.stac_extensions:
+        new_item.stac_extensions.append(file_schema_uri)
+
+    # 5. Process Assets (File Extension & Roles)
+    for asset_key, asset in new_item.assets.items():
+        # A. Ensure 'roles' exists (Spec: REQUIRED)
+        if not asset.roles:
+            # Default to 'data' if ambiguous, as per spec requirement for at least one data/doc
+            asset.roles = ["data"]
+
+        # B. Handle File Extension properties
+        # We use the pystac FileExtension helper to manage fields safely
+        file_ext = FileExtension.ext(asset, add_if_missing=True)
+        
+        # Spec: file:size is REQUIRED. 
+        # Since we cannot measure a remote Zarr file's size in a metadata script without downloading it,
+        # we check if it exists. If not, we set a placeholder.
+        if file_ext.size is None:
+            # PLACEHOLDER: You must replace 0 with the actual size in bytes if known.
+            # For Zarr (directories), this is often the sum of all chunk sizes.
+            file_ext.size = 0 
+            
+        # Optional: file:checksum is recommended but not required. 
+        # We leave it empty if not present.
+
+    return new_item
+
+
 def build_zip_info(zf: ZipFile, content_size, original_file_size):
     info_dict = {}
     children = defaultdict(list)
@@ -131,3 +284,5 @@ def load_zipzarr(url, end_mb, path='',**kwargs):
     zipfs = ReadOnlyZipFileSystem(fs, url, end_mb)
     zarr_store = zarr.storage.FsspecStore(fs=zipfs, read_only=True, path=path)
     return xr.open_zarr(zarr_store, **kwargs)
+
+
