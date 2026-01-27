@@ -156,3 +156,59 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
     product_collection.save_object(
         dest_href=str(product_dir / 'collection.json'),
     )
+
+
+def save_workflow_record_to_osc(workflow_record, catalog_root):
+
+    # create a directory  under /projects with the same ID as the project ID
+    wf_dir = catalog_root / 'workflows' / workflow_record['id']
+    wf_dir.mkdir()
+
+    # save the record in the new folder
+    import json
+    with open(wf_dir / 'record.json', 'w', encoding='utf-8') as f:
+        json.dump(workflow_record, f, indent=2, ensure_ascii=False)
+
+    # create a link from the parent Projects catalog to the new item.
+    catalog_extension = 'workflows/catalog.json'
+    local_catalog_path = catalog_root / catalog_extension
+    wf_catalog = pystac.Catalog.from_file(local_catalog_path)
+    wf_catalog.add_link(
+        pystac.Link(
+            rel='item',
+            target=f'./{workflow_record['id']}/record.json',
+            media_type="application/json",
+            title=workflow_record['properties']['title']
+
+        )
+    )
+    save_catalog_with_remote_selfhref(wf_catalog, local_catalog_path, catalog_extension)
+
+
+def save_experiment_record_to_osc(experiment_record, catalog_root):
+
+    # create a directory  under /projects with the same ID as the project ID
+    experiment_dir = catalog_root / 'experiments' / experiment_record['id']
+    experiment_dir.mkdir()
+
+    # save the record in the new folder
+    import json
+    with open(experiment_dir / 'record.json', 'w', encoding='utf-8') as f:
+        json.dump(experiment_record, f, indent=2, ensure_ascii=False)
+
+    # create a link from the parent Projects catalog to the new item.
+    catalog_extension = 'experiments/catalog.json'
+    local_catalog_path = catalog_root / catalog_extension
+    experiments_catalog = pystac.Catalog.from_file(local_catalog_path)
+    experiments_catalog.add_link(
+        pystac.Link(
+            rel='item',
+            target=f'./{experiment_record['id']}/record.json',
+            media_type="application/json",
+            title=experiment_record['properties']['title']
+
+        )
+    )
+    save_catalog_with_remote_selfhref(experiments_catalog, local_catalog_path, catalog_extension)
+
+

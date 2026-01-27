@@ -4,7 +4,9 @@ from datetime import datetime
 from earthcode.static import (
     create_product_collection, 
     create_project_collection, 
-    create_workflow_collection
+    create_workflow_collection,
+    create_experiment_collection,
+    generate_OSC_dummy_entries
 )
 
 
@@ -186,3 +188,7 @@ def test_workflow_ohc():
                                 workflow_description, workflow_license,
                                 workflow_keywords, workflow_formats, workflow_themes,
                                 codeurl, project_id, project_title)
+    
+
+def test_generate_dummy():
+    project, product ,workflow, experiment = generate_OSC_dummy_entries()

@@ -1,7 +1,6 @@
 import pystac
 from datetime import datetime
 
-
 pystac.set_stac_version('1.0.0')
 
 
@@ -307,6 +306,113 @@ def create_workflow_collection(workflow_id, workflow_title,
     return collection
 
 
+def create_experiment_collection(experiment_id, experiment_title, experiment_description,
+                        experiment_license, experiment_keywords, experiment_formats, 
+                        experiment_themes, experiment_input_parameters_link, experiment_enviroment_link, 
+                        workflow_id, workflow_title, 
+                        product_id, product_title, 
+                        contacts=None):
+
+    '''Create an experiment record from the provided information.'''
+
+    if contacts is None:
+        contacts =  [
+            {
+                "name": "EarthCODE Demo",
+                "organization": "EarthCODE",
+                "links": [
+                    {
+                        "rel": "about",
+                        "type": "text/html",
+                        "href": "https://opensciencedata.esa.int/"
+                    }
+                ],
+                "contactInstructions": "Contact via EarthCODE",
+                "roles": ["host"]
+            }
+        ]
+
+    # Generate timestamps
+    current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    collection = {
+        "id": experiment_id,
+        "type": "Feature",
+        "conformsTo": [
+            "http://www.opengis.net/spec/ogcapi-records-1/1.0/req/record-core"
+        ],
+        "geometry": None,
+        "properties": {
+            "created": current_time,
+            "updated": current_time,
+            "type": "experiment",
+            "title": experiment_title,
+            "description": experiment_description,
+            "keywords": experiment_keywords,
+            "contacts": contacts,
+            "themes": [
+                {
+                    "scheme": "https://github.com/stac-extensions/osc#theme",
+                    "concepts": [{"id": t} for t in experiment_themes]
+                }
+            ],
+            "formats": [{"name": f} for f in experiment_formats],
+            "license": experiment_license,
+            "osc:workflow": workflow_id,
+        },
+        "linkTemplates": [],
+        "links": [
+            {
+                "rel": "root",
+                "href": "../../catalog.json",
+                "type": "application/json",
+                "title": "Open Science Catalog"
+            },
+            {
+                "rel": "parent",
+                "href": "../catalog.json",
+                "type": "application/json",
+                "title": "Experiments"
+            },
+            {
+                "rel": "related",
+                "href": f"../../products/{product_id}/collection.json",
+                "type": "application/json",
+                "title": product_title
+            },
+            {
+            "rel": "related",
+            "href": f"../../workflows/{workflow_id}/record.json",
+            "type": "application/json",
+            "title": f"Workflow: {workflow_title}"
+            },
+            {
+                "rel": "input",
+                "href": f"{experiment_input_parameters_link}",
+                "type": "application/yaml",
+                "title": "Input parameters"
+            },
+            {
+                "rel": "environment",
+                "href": f"{experiment_enviroment_link}",
+                "type": "application/yaml",
+                "title": "Execution environment"
+            }
+        ]
+    }
+
+    # Add Theme links
+    for t in experiment_themes:
+        collection['links'].append(
+            {
+                "rel": "related",
+                "href": f"../../themes/{t}/catalog.json",
+                "type": "application/json",
+                "title": f"Theme: {t.capitalize()}"
+            }
+        )
+
+    return collection
 
 
 def generate_OSC_dummy_entries(id_extension='+123'):
@@ -341,7 +447,7 @@ def generate_OSC_dummy_entries(id_extension='+123'):
                                 to_email,
                                 consortium_members,
                                 website_link,
-                                eo4society_link=None)
+                                eo4society_link=eo4society_link)
     # product
     product_id = "4d-atlantic-ohc-global" + id_extension
     product_title = "Global Ocean Heat Content"
@@ -386,7 +492,7 @@ def generate_OSC_dummy_entries(id_extension='+123'):
     workflow_title="4D-Atlantic-Workflow"
     workflow_description="This describes the OHC workflow"
     workflow_keywords= ["ocean", "heat", 'çontent']
-    workflow_license = 'CC-BYB4.0' 
+    workflow_license = 'CC-BY-4.0' 
     workflow_formats = ['netcdf64']
     project_id = "4datlantic-ohc"
     project_title = "4D Atlantic OHC"
@@ -398,4 +504,43 @@ def generate_OSC_dummy_entries(id_extension='+123'):
                                workflow_keywords, workflow_formats, workflow_themes,
                                codeurl, project_id, project_title)
     
-    return project_collection, product_collection, workflow_collection
+
+    ### experiment
+    # experiment info
+    # Experiment id
+    experiment_id = "4datlantic-experiment" + id_extension
+    experiment_title = "4D-Atlantic-Experiment"
+    experiment_description = "This describes the OHC experiment"
+    experiment_license = "CC-BY-SA-4.0"
+    experiment_keywords = ["ocean", "heat", 'content']
+
+    # Define the input output formats that this experiment works with
+    # i.e. GeoTIFF, Zarr, netCDF, etc
+    experiment_formats = ["GeoTIFF"] 
+
+    # Define themes i.e. land. Pick one or more from:
+    # - atmosphere, cryosphere, land, magnetosphere-ionosphere, oceans, solid-earth.
+    experiment_themes = ["oceans"]
+
+    # link to the specification of the input paramters for the experiment
+    experiment_input_parameters_link = 'https://github.com/deepesdl/cube-gen'
+    # link to the enviroment in which the experiment was performed
+    experiment_enviroment_link  = 'https://github.com/deepesdl/cube-gen'
+
+    ## ID and title of the associated workflow
+    workflow_id = "4datlantic-wf" + id_extension
+    workflow_title = "4D-Atlantic-Workflow"
+
+    ## ID and title title of the associated product
+    product_id = "4d-atlantic-ohc-global" + id_extension
+    product_title = "Global Ocean Heat Content"
+
+    experiment = create_experiment_collection(
+    experiment_id, experiment_title, experiment_description,
+    experiment_license, experiment_keywords, experiment_formats, 
+    experiment_themes, experiment_input_parameters_link, experiment_enviroment_link, 
+    workflow_id, workflow_title, 
+    product_id, product_title, 
+    )
+    
+    return project_collection, product_collection, workflow_collection, experiment
