@@ -212,3 +212,27 @@ def save_experiment_record_to_osc(experiment_record, catalog_root):
     save_catalog_with_remote_selfhref(experiments_catalog, local_catalog_path, catalog_extension)
 
 
+def save_item_to_product_collection(item, product_collection, catalog_root):
+
+    item.add_link(pystac.Link.from_dict(
+         {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": product_collection.title
+        }
+    ))
+
+    item.add_link(pystac.Link.from_dict(
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": product_collection.title
+     },
+    ))
+    
+    item.save_object(
+        include_self_link=False, 
+        dest_href=catalog_root/f'products/{product_collection.id}/{item.id}.json'
+    )

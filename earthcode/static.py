@@ -231,7 +231,7 @@ def create_product_collection(product_id, product_title, product_description,
 def create_workflow_collection(workflow_id, workflow_title, 
                                workflow_description, workflow_license,
                                workflow_keywords, workflow_formats, workflow_themes,
-                               codeurl, project_id, project_title):
+                               codeurl, project_id, project_title, workflow_doi=None):
 
     '''Create a workflow collection template from the provided information.'''
 
@@ -302,6 +302,9 @@ def create_workflow_collection(workflow_id, workflow_title,
                         "title": f'Theme: {t.capitalize()}'
                     }
     )
+        
+    if workflow_doi:
+        collection['properties']['DOI'] = workflow_doi
     
     return collection
 
@@ -542,3 +545,47 @@ def generate_OSC_dummy_entries(id_extension='+123'):
     )
     
     return project_collection, product_collection, workflow_collection, experiment
+
+
+def add_item_link_to_product_collection(product_collection, item_id, item_title):
+
+    product_collection.add_link(
+        pystac.Link(
+            rel='item', target=f'./{item_id}.json', 
+            media_type='application/json', 
+            title=item_title
+        )
+    )
+
+
+def create_item(itemid, geometry, data_time, bbox, product_id, 
+                license, description, data_url, data_mime_type, 
+                data_title, extra_fields=None):
+    
+    item = pystac.Item(
+        id=itemid,
+        geometry=geometry,
+        datetime=data_time,
+        bbox=bbox,
+        collection=product_id,
+        properties= {
+            "license": license,
+            "description": description,
+        }
+    )
+
+    # 3. add an asset (the actual link to the file)
+    item.add_asset(
+        key="data",
+        asset=pystac.Asset(
+            href=data_url,
+            media_type=data_mime_type,
+            roles=["data"],
+            title=data_title
+        )
+    )
+
+    for k,v in extra_fields.items():
+        item.extra_fields[k] = v
+
+    return item
