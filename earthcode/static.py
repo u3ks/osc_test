@@ -243,7 +243,7 @@ def create_workflow_collection(workflow_id, workflow_title,
         "properties": {
             "title": workflow_title,
             "description": workflow_description,
-            "osc:type": "workflow",
+            "type": "workflow",
             "osc:project": project_id,
             "osc:status": "completed",
             "formats": [{"name": f} for f in workflow_formats],
@@ -271,7 +271,7 @@ def create_workflow_collection(workflow_id, workflow_title,
 
             {
                 "rel": "related",
-                "href": f"../../projects/{project_title}/collection.json",
+                "href": f"../../projects/{project_id}/collection.json",
                 "type": "application/json",
                 "title": f"Project: {project_title}"
             },
@@ -494,8 +494,6 @@ def generate_OSC_dummy_entries(id_extension='+123'):
     workflow_keywords= ["ocean", "heat", 'çontent']
     workflow_license = 'CC-BY-4.0' 
     workflow_formats = ['netcdf64']
-    project_id = "4datlantic-ohc"
-    project_title = "4D Atlantic OHC"
     workflow_themes = ['oceans']
     workflow_contracts_info = [('Magellium', "contact@magellium.fr")]
     codeurl = 'https://github.com/ESA-EarthCODE/open-science-catalog-metadata'
