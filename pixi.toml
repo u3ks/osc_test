@@ -20,6 +20,9 @@ bottleneck = ">=1.6.0,<2"
 rioxarray = ">=0.20.0,<0.21"
 pytest = ">=9.0.2,<10"
 geopandas = ">=1.1.2,<2"
+sentence-transformers = ">=5.2.2,<6"
+pyarrow = ">=23.0.0,<24"
+lancedb = ">=0.21.1,<0.22"
 
 [pypi-dependencies]
 earthcode = { path = ".", editable = true }
