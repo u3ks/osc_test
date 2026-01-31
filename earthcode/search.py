@@ -1,18 +1,16 @@
 """Search interface for Lance vector store of Open Science Catalog items.
 
-Provides semantic search across products, variables, missions, and projects using sentence transformer embeddings.
+Provides semantic search across products, variables, missions, and projects using FastEmbed embeddings.
 
 Returns:
     list[pystac.Collection | pystac.Catalog]: Search results as PySTAC objects.
 """
 
-# todo: consider using FastEmbed instead
-
 import json
 import lance
 import numpy as np
 import pystac
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 LANCE_URI = "s3://pangeo-test-fires/vector_store_v5/"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
@@ -71,7 +69,7 @@ def search(
             LANCE_URI.rstrip("/") + "/", storage_options=LANCE_BASE_STORAGE_OPTIONS
         )
     if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
+        _model = TextEmbedding(model_name=MODEL_NAME)
 
     # build filter string
     parts = []
@@ -152,12 +150,7 @@ def search(
     ]
 
     if query and query.strip():
-        vec = _model.encode(
-            [query],
-            normalize_embeddings=False,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )[0]
+        vec = next(_model.embed([query]))
 
         tbl = _ds.scanner(
             columns=cols,
