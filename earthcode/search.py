@@ -6,8 +6,7 @@ Returns:
     list[pystac.Collection | pystac.Catalog]: Search results as PySTAC objects.
 """
 
-# todo:
-# - consider using FastEmbed instead
+# todo: consider using FastEmbed instead
 
 import json
 import lance
@@ -17,6 +16,10 @@ from sentence_transformers import SentenceTransformer
 
 LANCE_URI = "s3://pangeo-test-fires/vector_store_v5/"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+LANCE_BASE_STORAGE_OPTIONS = {
+    "region": "eu-west-2",
+    "aws_skip_signature": "true",
+}
 
 _ds = None
 _model = None
@@ -29,13 +32,44 @@ def search(
     bbox=None,
     intersects=True,
     collection_ids=None,
+    theme=None,
+    variable=None,
+    mission=None,
+    keyword=None,
     type="products",
-    lance_uri=LANCE_URI,
 ):
+    # check valid inputs for type
+    if type not in ("products", "variables", "eo-missions", "projects"):
+        raise ValueError(
+            f"Invalid type '{type}'. Must be one of 'products', 'variables', 'eo-missions', or 'projects'."
+        )
+
+    # check valid inputs for themes:
+    valid_themes = {
+        "land",
+        "oceans",
+        "atmosphere",
+        "cryosphere",
+        "magnetosphere-ionosphere",
+        "solid-earth",
+    }
+    if theme:
+        themes = (
+            theme if isinstance(theme, (list, tuple, set)) else [theme]
+        )  # handle if list or str
+        for t in themes:
+            if t not in valid_themes:
+                raise ValueError(
+                    f"Invalid theme '{t}'. Must be one of {sorted(valid_themes)}."
+                )
+
+
     # dataset / model caches
     global _ds, _model
-    if _ds is None or getattr(_ds, "uri", None) != lance_uri.rstrip("/") + "/":
-        _ds = lance.dataset(lance_uri.rstrip("/") + "/")
+    if _ds is None or getattr(_ds, "uri", None) != LANCE_URI.rstrip("/") + "/":
+        _ds = lance.dataset(
+            LANCE_URI.rstrip("/") + "/", storage_options=LANCE_BASE_STORAGE_OPTIONS
+        )
     if _model is None:
         _model = SentenceTransformer(MODEL_NAME)
 
@@ -46,6 +80,50 @@ def search(
         if isinstance(collection_ids, str):
             collection_ids = [collection_ids]
         parts.append("id IN (" + ",".join(f"'{c}'" for c in collection_ids) + ")")
+
+    if theme and type in ("products", "variables"):
+        themes = (
+            theme if isinstance(theme, (list, tuple, set)) else [theme]
+        )  # handle if list or str
+        theme_filters = [
+            f"LOWER(theme_ids) LIKE '%|{str(t).lower()}|%'" for t in themes if t
+        ]
+        if theme_filters:
+            parts.append("(" + " OR ".join(theme_filters) + ")")
+
+    if variable and type == "products":
+        variables = variable if isinstance(variable, (list, tuple, set)) else [variable]
+        variable_filters = [
+            f"LOWER(variable_ids) LIKE '%|{str(v).lower()}|%'" for v in variables if v
+        ]
+        if variable_filters:
+            parts.append("(" + " OR ".join(variable_filters) + ")")
+
+    if mission and type == "products":
+        missions = mission if isinstance(mission, (list, tuple, set)) else [mission]
+        mission_filters = [
+            f"LOWER(mission_ids) LIKE '%|{str(m).lower()}|%'" for m in missions if m
+        ]
+        if mission_filters:
+            parts.append("(" + " OR ".join(mission_filters) + ")")
+
+    if keyword:
+        keywords = keyword if isinstance(keyword, (list, tuple, set)) else [keyword]
+        kw_filters = [
+            "("
+            + " OR ".join(
+                [
+                    f"LOWER(title) LIKE '%{str(kw).lower()}%'",
+                    f"LOWER(description) LIKE '%{str(kw).lower()}%'",
+                    f"LOWER(keywords) LIKE '%|{str(kw).lower()}|%'",
+                ]
+            )
+            + ")"
+            for kw in keywords
+            if kw
+        ]
+        if kw_filters:
+            parts.append("(" + " OR ".join(kw_filters) + ")")
 
     if bbox and len(bbox) >= 4:
         minx, miny, maxx, maxy = bbox[:4]
@@ -65,6 +143,7 @@ def search(
         "group",
         "title",
         "description",
+        "keywords",
         "bbox_minx",
         "bbox_miny",
         "bbox_maxx",
@@ -108,5 +187,9 @@ def search(
 
 
 # if __name__ == "__main__":
-#     for grp in ["products", "variables", "eo-missions", "projects"]:
-#         print(grp, [c.title for c in search("forest fires", type=grp, limit=2)])
+# for grp in ["products", "variables", "eo-missions", "projects"]:
+#     print(grp, [c.title for c in search("forest fires", type=grp, limit=2)])
+# print(len(search("forest fires", theme="land", limit=2))) # one or more results expected - with theme = land
+# print(len(search("forest fires", theme="ocean", limit=2))) # no results expected
+# print(search(variable="burned-area")[0].title) # expect something that has a variable of fire
+# print(search(keyword="Seasonal Fire Modeling")[0].title)
