@@ -20,13 +20,27 @@ import numpy as np
 import pyarrow as pa
 from sentence_transformers import SentenceTransformer
 
-DEFAULT_ROOT_DIR = "open-science-catalog-metadata"
+DEFAULT_ROOT_DIR = "../open-science-catalog-metadata"
 DEFAULT_GROUPS = ["products", "variables", "eo-missions", "projects"]
 DEFAULT_LANCE_URI = "s3://pangeo-test-fires/vector_store_v5/"
+LANCE_BASE_STORAGE_OPTIONS = {
+    "region": "eu-west-2",
+    "aws_skip_signature": "true",
+}  # to be implemented
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 # ---------------------------- helpers ---------------------------- #
+
+
+def extract_theme_ids(data):
+    theme_ids = []
+    for theme in data.get("themes", []):
+        for concept in theme.get("concepts", []):
+            cid = concept.get("id")
+            if cid:
+                theme_ids.append(str(cid))
+    return theme_ids
 
 
 def flatten_metadata(data):
@@ -37,16 +51,16 @@ def flatten_metadata(data):
     parts.extend(data.get("keywords", []))
     parts.extend(data.get("osc:variables", []))
     parts.extend(data.get("osc:missions", []))
-    for theme in data.get("themes", []):
-        for concept in theme.get("concepts", []):
-            cid = concept.get("id")
-            if cid:
-                parts.append(str(cid))
+    parts.extend(extract_theme_ids(data))
     return "\n".join(p for p in parts if p)
 
 
 def create_row_from_stac_file(path, group):
     data = json.loads(path.read_text())
+    theme_ids = extract_theme_ids(data)
+    variable_ids = [str(v) for v in data.get("osc:variables", []) if v]
+    mission_ids = [str(m) for m in data.get("osc:missions", []) if m]
+    keywords = [str(k) for k in data.get("keywords", []) if k]
     bboxes = data.get("extent", {}).get("spatial", {}).get("bbox") or [
         [-180, -90, 180, 90]
     ]
@@ -65,6 +79,10 @@ def create_row_from_stac_file(path, group):
         "bbox_maxx": bmaxx,
         "bbox_maxy": bmaxy,
         "item_json": json.dumps(data),
+        "theme_ids": f"|{'|'.join(theme_ids)}|" if theme_ids else "",
+        "variable_ids": f"|{'|'.join(variable_ids)}|" if variable_ids else "",
+        "mission_ids": f"|{'|'.join(mission_ids)}|" if mission_ids else "",
+        "keywords": f"|{'|'.join(keywords)}|" if keywords else "",
         "text": flatten_metadata(data),
     }
 
