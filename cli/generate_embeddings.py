@@ -5,7 +5,7 @@ Currently only handles OSC collections/catalogs for 'products', 'variables', 'eo
 It does NOT handle the stac items within collections. In future this can be handled with multiple indexes and tables.
 
 - Build (defaults baked in): `pixi run python generate_embeddings.py`
-- Explicit build: `pixi run python generate_embeddings.py --products-dir open-science-catalog-metadata/products --lance-uri s3://pangeo-test-fires/vector_store_v3/ --browser-out-dir vector_store_browser_v2 --model all-minilm:l6-v2`
+- Explicit build: `pixi run python generate_embeddings.py --products-dir open-science-catalog-metadata/products --lance-uri s3://pangeo-test-fires/vector_store_v3/ --browser-out-dir vector_store_browser_v2 --model BAAI/bge-small-en-v1.5`
 
 
 Returns:
@@ -18,7 +18,7 @@ from pathlib import Path
 import lance
 import numpy as np
 import pyarrow as pa
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 DEFAULT_ROOT_DIR = "../open-science-catalog-metadata"
 DEFAULT_GROUPS = ["products", "variables", "eo-missions", "projects"]
@@ -102,13 +102,8 @@ def load_documents(stac_dir, group):
 
 
 def build_embeddings(texts, model_name):
-    model = SentenceTransformer(model_name)
-    return model.encode(
-        texts,
-        normalize_embeddings=False,
-        convert_to_numpy=True,
-        show_progress_bar=True,
-    ).astype(np.float32)
+    model = TextEmbedding(model_name=model_name)
+    return np.asarray(list(model.embed(texts)), dtype=np.float32)
 
 
 # ----------------------------- main ------------------------------ #
@@ -133,7 +128,7 @@ def main():
         help="Where to write the Lance dataset.",
     )
     parser.add_argument(
-        "--model", default=MODEL_NAME, help="SentenceTransformer model name."
+        "--model", default=MODEL_NAME, help="FastEmbed model name."
     )
     args = parser.parse_args()
 
