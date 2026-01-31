@@ -23,6 +23,8 @@ geopandas = ">=1.1.2,<2"
 sentence-transformers = ">=5.2.2,<6"
 pyarrow = ">=23.0.0,<24"
 lancedb = ">=0.21.1,<0.22"
+pillow = ">=10.3,<12"
 
 [pypi-dependencies]
 earthcode = { path = ".", editable = true }
+fastembed = ">=0.7.4, <0.8"
