@@ -18,6 +18,16 @@ LANCE_BASE_STORAGE_OPTIONS = {
     "region": "eu-west-2",
     "aws_skip_signature": "true",
 }
+OPEN_SCIENCE_CATALOG_LINK = "https://opensciencedata.esa.int/stac-browser/#"
+URL_TO_INJECT = {
+    "products": OPEN_SCIENCE_CATALOG_LINK + "/products/{id}/collection.json",
+    "variables": OPEN_SCIENCE_CATALOG_LINK + "/variables/{id}/catalog.json",
+    "projects": OPEN_SCIENCE_CATALOG_LINK + "/projects/{id}/collection.json",
+    "eo-missions": OPEN_SCIENCE_CATALOG_LINK + "/eo-missions/{id}/catalog.json",
+    "themes": OPEN_SCIENCE_CATALOG_LINK + "/themes/{id}/catalog.json",
+    "experiments": OPEN_SCIENCE_CATALOG_LINK + "/experiments/{id}/record.json",
+    "workflows": OPEN_SCIENCE_CATALOG_LINK + "/workflows/{id}/record.json",
+}
 
 _ds = None
 _model = None
@@ -60,7 +70,6 @@ def search(
                 raise ValueError(
                     f"Invalid theme '{t}'. Must be one of {sorted(valid_themes)}."
                 )
-
 
     # dataset / model caches
     global _ds, _model
@@ -170,12 +179,15 @@ def search(
     results = []
 
     for row in tbl.to_pylist():
-        item = json.loads(row["item_json"])
-        results.append(
-            pystac.Collection.from_dict(item)
-            if item.get("type") == "Collection"
-            else pystac.Catalog.from_dict(item)
+        item_j = json.loads(row["item_json"])
+        item = (
+            pystac.Collection.from_dict(item_j)
+            if item_j.get("type") == "Collection"
+            else pystac.Catalog.from_dict(item_j)
         )
+        item.extra_fields["osc_url"] = URL_TO_INJECT.get(type, "").format(id=row["id"])
+
+        results.append(item)
     return results
 
 
