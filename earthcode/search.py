@@ -7,6 +7,9 @@ Returns:
 """
 
 import json
+from pathlib import Path
+import shutil
+import tempfile
 import lance
 import numpy as np
 import pystac
@@ -78,7 +81,13 @@ def search(
             LANCE_URI.rstrip("/") + "/", storage_options=LANCE_BASE_STORAGE_OPTIONS
         )
     if _model is None:
-        _model = TextEmbedding(model_name=MODEL_NAME)
+        try:
+            _model = TextEmbedding(model_name=MODEL_NAME)
+        except Exception as exc:
+            if "NO_SUCHFILE" not in str(exc) and "NoSuchFile" not in str(exc):
+                raise
+            shutil.rmtree(Path(tempfile.gettempdir()) / "fastembed_cache", ignore_errors=True)
+            _model = TextEmbedding(model_name=MODEL_NAME)
 
     # build filter string
     parts = []
