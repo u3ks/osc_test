@@ -1,11 +1,12 @@
 import pystac
 from pathlib import Path
 import json
+from typing import Any, Mapping
 
 REMOTE_URL =  'https://esa-earthcode.github.io/open-science-catalog-metadata/'
 
 
-def _add_link_if_missing(stac_obj, link: pystac.Link) -> None:
+def _add_link_if_missing(stac_obj: pystac.STACObject, link: pystac.Link) -> None:
     """Adds a link only when no existing link has the same rel and href."""
 
     for existing in stac_obj.get_links():
@@ -14,7 +15,7 @@ def _add_link_if_missing(stac_obj, link: pystac.Link) -> None:
     stac_obj.add_link(link)
 
 
-def _require_product_field(product_dict: dict, key: str):
+def _require_product_field(product_dict: Mapping[str, Any], key: str) -> Any:
     """Ensures a required product metadata key exists and is non-empty."""
 
     value = product_dict.get(key)
@@ -25,7 +26,23 @@ def _require_product_field(product_dict: dict, key: str):
     return value
 
 
-def save_catalog_with_remote_selfhref(catalog_object, local_catalog_path, catalog_extension):
+def _collection_to_dict(
+    collection: dict[str, Any] | pystac.Collection, context_name: str
+) -> dict[str, Any]:
+    """Normalizes a collection input to a dictionary representation."""
+
+    if isinstance(collection, pystac.Collection):
+        return collection.to_dict()
+    if isinstance(collection, dict):
+        return collection
+    raise TypeError(f"{context_name} must be a dict or pystac.Collection")
+
+
+def save_catalog_with_remote_selfhref(
+    catalog_object: pystac.Catalog,
+    local_catalog_path: Path,
+    catalog_extension: str,
+) -> None:
     """Saves a catalog JSON file while forcing the self link to the configured remote OSC URL."""
     
     # set remote href
@@ -42,17 +59,23 @@ def save_catalog_with_remote_selfhref(catalog_object, local_catalog_path, catalo
 
 
 # save project to catalog
-def save_project_collection_to_osc(project_collection, catalog_root):
+def save_project_collection_to_osc(
+    project_collection: dict[str, Any] | pystac.Collection,
+    catalog_root: Path,
+) -> None:
     """Writes a project collection into the local OSC tree and links it from the projects catalog."""
 
+    project_dict = _collection_to_dict(project_collection, "project_collection")
+    project_id = project_dict["id"]
+    project_title = project_dict.get("title")
+
     # create a directory  under /projects with the same ID as the project ID
-    project_dir = catalog_root / 'projects' / project_collection.id
+    project_dir = catalog_root / 'projects' / project_id
     project_dir.mkdir(parents=True, exist_ok=True)
 
     # save the collection in the new folder
-    project_collection.save_object(
-        dest_href=str(project_dir / 'collection.json'),
-    )
+    with open(project_dir / 'collection.json', 'w', encoding='utf-8') as f:
+        json.dump(project_dict, f, indent=2, ensure_ascii=False)
 
     # create a link from the parent Projects catalog to the new item.
     catalog_extension = 'projects/catalog.json'
@@ -62,9 +85,9 @@ def save_project_collection_to_osc(project_collection, catalog_root):
         projects_catalog,
         pystac.Link(
             rel='child',
-            target=f'./{project_collection.id}/collection.json',
+            target=f'./{project_id}/collection.json',
             media_type="application/json",
-            title=project_collection.title
+            title=project_title
 
         )
     )
@@ -73,10 +96,15 @@ def save_project_collection_to_osc(project_collection, catalog_root):
 
 
 
-def save_product_collection_to_catalog(product_collection, catalog_root):
+def save_product_collection_to_catalog(
+    product_collection: dict[str, Any] | pystac.Collection,
+    catalog_root: Path,
+) -> None:
     """Writes a product collection and updates all related reverse links in projects, themes, variables, and missions catalogs."""
 
-    product_dict = product_collection.to_dict()
+    product_dict = _collection_to_dict(product_collection, "product_collection")
+    product_id = product_dict["id"]
+    product_title = product_dict.get("title")
     project_id = _require_product_field(product_dict, 'osc:project')
     product_themes = [p['concepts'][0]['id'] for p in _require_product_field(product_dict, 'themes')]
     product_variables = [v for v in _require_product_field(product_dict, 'osc:variables')]
@@ -84,7 +112,7 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
 
     
     # create a directory  under /projects with the same ID as the project ID
-    product_dir = catalog_root / 'products' / product_collection.id
+    product_dir = catalog_root / 'products' / product_id
     product_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -96,9 +124,9 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
         products_catalog,
         pystac.Link(
             rel='child',
-            target=f'./{product_collection.id}/collection.json',
+            target=f'./{product_id}/collection.json',
             media_type="application/json",
-            title=f'{product_collection.title}'
+            title=f'{product_title}'
         )
     )
     save_catalog_with_remote_selfhref(products_catalog, local_catalog_path, catalog_extension)
@@ -114,9 +142,9 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
         project_collection,
         pystac.Link(
             rel='child',
-            target=f'../../products/{product_collection.id}/collection.json',
+            target=f'../../products/{product_id}/collection.json',
             media_type="application/json",
-            title=f'{product_collection.title}'
+            title=f'{product_title}'
         )
     )
     with open(catalog_root / f'projects/{project_id}/collection.json', 'w') as f:
@@ -134,9 +162,9 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
             theme_catalog,
             pystac.Link(
                 rel='child',
-                target=f'../../products/{product_collection.id}/collection.json',
+                target=f'../../products/{product_id}/collection.json',
                 media_type="application/json",
-                title=f'{product_collection.title}'
+                title=f'{product_title}'
             )
         )
         save_catalog_with_remote_selfhref(theme_catalog, local_catalog_path, catalog_extension)
@@ -150,9 +178,9 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
             var_catalog,
             pystac.Link(
                 rel='child',
-                target=f'../../products/{product_collection.id}/collection.json',
+                target=f'../../products/{product_id}/collection.json',
                 media_type="application/json",
-                title=f'{product_collection.title}'
+                title=f'{product_title}'
             )
         )
         save_catalog_with_remote_selfhref(var_catalog, local_catalog_path, catalog_extension)
@@ -167,28 +195,34 @@ def save_product_collection_to_catalog(product_collection, catalog_root):
             mission_catalog,
             pystac.Link(
                 rel='child',
-                target=f'../../products/{product_collection.id}/collection.json',
+                target=f'../../products/{product_id}/collection.json',
                 media_type="application/json",
-                title=f'{product_collection.title}'
+                title=f'{product_title}'
             )
         )
         save_catalog_with_remote_selfhref(mission_catalog, local_catalog_path, catalog_extension)
 
     # update link titles
-    for link in product_collection.get_links('related'):
-        link_elements = link.href.split('/')
-        if link_elements[2] in ['variables', 'eo-missions']:
-            catalog_title = pystac.Catalog.from_file(catalog_root / f'{link_elements[2]}/{link_elements[3]}/catalog.json').title
+    for link in product_dict.get("links", []):
+        if link.get("rel") != "related":
+            continue
+        href = link.get("href", "")
+        link_elements = href.split('/')
+        if len(link_elements) > 3 and link_elements[2] in ['variables', 'eo-missions']:
+            catalog_title = pystac.Catalog.from_file(
+                catalog_root / f'{link_elements[2]}/{link_elements[3]}/catalog.json'
+            ).title
             prefix = 'Variable: ' if link_elements[2] == 'variables' else 'EO Mission: '
-            link.title = prefix + catalog_title
+            link["title"] = prefix + catalog_title
 
     # save the collection in the new folder
-    product_collection.save_object(
-        dest_href=str(product_dir / 'collection.json'),
-    )
+    with open(product_dir / 'collection.json', 'w', encoding='utf-8') as f:
+        json.dump(product_dict, f, indent=2, ensure_ascii=False)
 
 
-def save_workflow_record_to_osc(workflow_record, catalog_root):
+def save_workflow_record_to_osc(
+    workflow_record: dict[str, Any], catalog_root: Path
+) -> None:
     """Writes a workflow record into the local OSC tree and links it from the workflows catalog."""
 
     # create a directory  under /projects with the same ID as the project ID
@@ -207,7 +241,7 @@ def save_workflow_record_to_osc(workflow_record, catalog_root):
         wf_catalog,
         pystac.Link(
             rel='item',
-            target=f'./{workflow_record['id']}/record.json',
+            target=f"./{workflow_record['id']}/record.json",
             media_type="application/json",
             title=workflow_record['properties']['title']
 
@@ -216,7 +250,9 @@ def save_workflow_record_to_osc(workflow_record, catalog_root):
     save_catalog_with_remote_selfhref(wf_catalog, local_catalog_path, catalog_extension)
 
 
-def save_experiment_record_to_osc(experiment_record, catalog_root):
+def save_experiment_record_to_osc(
+    experiment_record: dict[str, Any], catalog_root: Path
+) -> None:
     """Writes an experiment record into the local OSC tree and links it from the experiments catalog."""
 
     # create a directory  under /projects with the same ID as the project ID
@@ -235,7 +271,7 @@ def save_experiment_record_to_osc(experiment_record, catalog_root):
         experiments_catalog,
         pystac.Link(
             rel='item',
-            target=f'./{experiment_record['id']}/record.json',
+            target=f"./{experiment_record['id']}/record.json",
             media_type="application/json",
             title=experiment_record['properties']['title']
 
@@ -244,7 +280,9 @@ def save_experiment_record_to_osc(experiment_record, catalog_root):
     save_catalog_with_remote_selfhref(experiments_catalog, local_catalog_path, catalog_extension)
 
 
-def save_item_to_product_collection(item, product_collection, catalog_root):
+def save_item_to_product_collection(
+    item: pystac.Item, product_collection: pystac.Collection, catalog_root: Path
+) -> None:
     """Adds parent and collection links to an item and saves it under the target product directory."""
 
     item.add_link(pystac.Link.from_dict(
