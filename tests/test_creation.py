@@ -7,7 +7,8 @@ from earthcode.metadata_input_definitions import (
     ProductCollectionMetadata,
     ProjectCollectionMetadata,
     WorkflowMetadata,
-    ExperimentMetadata
+    ExperimentMetadata,
+    ItemMetadata
 )
 from earthcode.static import (
     create_product_collection,
@@ -15,6 +16,7 @@ from earthcode.static import (
     create_workflow_record,
     create_experiment_record,
     generate_OSC_dummy_entries,
+    create_item
 )
 
 
@@ -475,3 +477,59 @@ def test_generate_dummy():
     assert workflow["id"].endswith("+123")
     assert experiment["id"].endswith("+123")
  
+def test_item_creation():
+
+  import json
+  import shapely
+  import pandas as pd
+
+  product_id = 'waposal-waves'
+  zip_url = 'https://wgms.ch/downloads/GlaMBIE_Data_DOI_10.5904_wgms-glambie-2024-07.zip'
+  collectionid = product_id
+  bbox = [ -180.0, -90.0, 180.0, 90.0]
+  geometry = json.loads(json.dumps(shapely.box(*bbox).__geo_interface__))
+  data_time = pd.to_datetime('2024-07-16T00:00:00Z') # Release date of the dataset
+  itemid = f"{collectionid}-zip_folder"
+  item_license = "CC-BY-4.0"
+  description = 'Dataset contents: The GlaMBIE dataset contains both the input data and the results to the exercise./n/nThe datasets are organised in the two main data folders, each with a more detailed data information file, and with subfolders containing the data in csv files./n/nCitation: The GlaMBIE Team (2024): Glacier Mass Balance Intercomparison Exercise (GlaMBIE) Dataset 1.0.0. World Glacier Monitoring Service (WGMS), Zurich, Switzerland. https://doi.org/10.5904/wgms-glambie-2024-07'
+  data_url = zip_url
+  data_mime_type = "application/zip"
+  data_title = "GlaMBIE dataset archive (ZIP)"
+
+  extra_fields = {
+      "file:size": 2726298,
+      "file:compression": "zip",
+      "data:format": "CSV inside ZIP"
+  }
+
+  item_instance = ItemMetadata(
+    itemid=itemid,
+    geometry=geometry,
+    data_time=data_time, 
+    bbox=bbox,
+    product_id=product_id,
+    license=item_license,
+    description=description,
+    data_url=data_url,
+    data_mime_type=data_mime_type,
+    data_title=data_title,
+    extra_fields=extra_fields
+  )
+
+
+  item = create_item(item_instance)
+
+  ## aserts
+  assert item.id == itemid
+  assert item.geometry == geometry
+  assert item.bbox == bbox
+  assert item.datetime == data_time.to_pydatetime()
+  assert item.collection_id == product_id
+  assert item.properties.get("license") == item_license
+  assert item.properties.get("description") == description
+  assert "data" in item.assets
+  assert item.assets["data"].href == data_url
+  assert item.assets["data"].media_type == data_mime_type
+  assert item.assets['data'].extra_fields["file:size"] == extra_fields["file:size"]
+  assert item.assets['data'].extra_fields["file:compression"] == extra_fields["file:compression"]
+  assert item.assets['data'].extra_fields["data:format"] == extra_fields["data:format"]

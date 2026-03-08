@@ -536,7 +536,7 @@ def add_item_link_to_product_collection(product_collection: pystac.Collection, i
     )
 
 
-def create_item(item_metadata: ItemMetadata) -> pystac.Item:
+def create_item(item_metadata: ItemMetadata, stac_version='1.0.0') -> pystac.Item:
     """Creates a STAC item with one data asset and optional extra fields."""
 
     item = pystac.Item(
@@ -551,6 +551,10 @@ def create_item(item_metadata: ItemMetadata) -> pystac.Item:
         },
     )
 
+    extra_fields = {}
+    for key, value in (item_metadata.extra_fields or {}).items():
+        extra_fields[key] = value
+
     item.add_asset(
         key="data",
         asset=pystac.Asset(
@@ -558,10 +562,8 @@ def create_item(item_metadata: ItemMetadata) -> pystac.Item:
             media_type=item_metadata.data_mime_type,
             roles=["data"],
             title=item_metadata.data_title,
+            extra_fields=extra_fields
         ),
     )
-
-    for key, value in (item_metadata.extra_fields or {}).items():
-        item.extra_fields[key] = value
 
     return item

@@ -294,16 +294,33 @@ def save_item_to_product_collection(
         }
     ))
 
-    item.add_link(pystac.Link.from_dict(
-    {
+    item.add_link(pystac.Link.from_dict({
       "rel": "parent",
       "href": "./collection.json",
       "type": "application/json",
       "title": product_collection.title
      },
     ))
-    
+
+
     item.save_object(
         include_self_link=False, 
         dest_href=catalog_root/f'products/{product_collection.id}/{item.id}.json'
     )
+
+    # add to product collection if not already existing
+    with open(catalog_root / f'products/{product_collection.id}/collection.json') as f:
+        existing_product_collection = json.load(f)
+        existing_product_collection = pystac.Collection.from_dict(existing_product_collection,
+                                                         migrate=False,
+                                                         root=None,
+                                                         preserve_dict=True)
+    _add_link_if_missing(
+        existing_product_collection,
+        pystac.Link(rel="item", target=f"./{item.id}.json", media_type="application/json", title=item.assets['data'].title)
+    )
+    
+    with open(catalog_root / f'products/{product_collection.id}/collection.json', 'w') as f:
+        json.dump(
+            existing_product_collection.to_dict(include_self_link=False, transform_hrefs=False), 
+            f, ensure_ascii=False, indent=2)

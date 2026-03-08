@@ -6,3 +6,5 @@
 *.json
 test*.ipynb
 open-science-catalog-metadata
+htmlcov/
+*.coverage
