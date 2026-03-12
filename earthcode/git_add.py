@@ -281,9 +281,17 @@ def save_experiment_record_to_osc(
 
 
 def save_item_to_product_collection(
-    item: pystac.Item, product_collection: pystac.Collection, catalog_root: Path
+    item: pystac.Item, product_collection: pystac.Collection | str, catalog_root: Path
 ) -> None:
     """Adds parent and collection links to an item and saves it under the target product directory."""
+
+    if type(product_collection) is str:
+        with open(catalog_root/f'products/{product_collection}/collection.json', 'r', encoding='utf-8') as f:
+            product_collection = json.load(f)
+            product_collection = pystac.Collection.from_dict(product_collection,
+                                                        migrate=False,
+                                                        root=None,
+                                                        preserve_dict=True)
 
     item.add_link(pystac.Link.from_dict(
          {
