@@ -139,7 +139,7 @@ class ProductCollectionMetadata(BaseModel):
     documentation_link: Optional[str] = Field(
         None,
         description="URL to supporting documentation such as handbook or validation report.",
-    ),
+    )
     license_link: Optional[str] = Field(
         None,
         description="URL to license, if its not a standard SPDX one.",

@@ -328,7 +328,56 @@ def save_item_to_product_collection(
         pystac.Link(rel="item", target=f"./{item.id}.json", media_type="application/json", title=item.assets['data'].title)
     )
     
-    with open(catalog_root / f'products/{product_collection.id}/collection.json', 'w') as f:
+    with open(catalog_root / f'products/{product_collection.id}/collection.json', 'w', encoding='utf-8') as f:
         json.dump(
             existing_product_collection.to_dict(include_self_link=False, transform_hrefs=False), 
+            f, ensure_ascii=False, indent=2)
+
+
+
+def save_item_links_to_product_collection(catalog_root: Path, product_id: str, item_link: str, access_link: str=None, documentation_link: str=None):
+    """Adds links to an existing product collection"""
+    
+    with open(catalog_root/f'products/{product_id}/collection.json', 'r', encoding='utf-8') as f:
+        product_collection = json.load(f)
+        product_collection = pystac.Collection.from_dict(product_collection,
+                                                    migrate=False,
+                                                    root=None,
+                                                    preserve_dict=True)
+    links = [
+        pystac.Link.from_dict({
+                "rel": "child",
+                "href": item_link,
+                "type": "application/json",
+                "title": "PRR Data Collection"
+                }
+            )
+    ]
+
+    if documentation_link:
+        links.append(
+            pystac.Link.from_dict({
+                "rel": "via",
+                "href": documentation_link,
+                "type": "application/json",
+                "title": "Documentation"
+                }
+            )
+        )
+
+    if access_link:
+        links.append( 
+            pystac.Link.from_dict({
+                "rel": "via",
+                "href": access_link,
+                "type": "application/json",
+                "title": "Access"
+                }
+            )
+        )
+    
+    product_collection.add_links(links)
+    with open(catalog_root / f'products/{product_collection.id}/collection.json', 'w', encoding='utf-8') as f:
+        json.dump(
+            product_collection.to_dict(include_self_link=False, transform_hrefs=False), 
             f, ensure_ascii=False, indent=2)
